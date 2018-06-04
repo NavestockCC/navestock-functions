@@ -6,6 +6,7 @@ import * as request from 'request';
 /** Navesock Objects */
 import {MatchDetailImport} from './matchdetail-import';
 import {SendResults} from './send-email'
+import {MatchListImport} from './matchlist-import';
 
 
 admin.initializeApp(functions.config().firebase);
@@ -71,6 +72,21 @@ sndResults.sendResultEmail();
 res.send('Results email sent');
 });
 
+
+export const playcricketMatchListImport = functions.firestore
+.document('FixtureImport/MatchList')
+.onWrite(
+  async (snap, context) => {
+    try{
+      const MatchListImportFunction:MatchListImport = new MatchListImport; 
+      const document: any = snap.after.data();
+      return MatchListImportFunction.updateMatchList(document.season);
+    }
+    catch (err){
+      return err;
+      }
+    }
+  )
 
 /*
 exports.emailSplit = functions.https.onRequest((req, res) => {
