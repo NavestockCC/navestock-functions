@@ -3,6 +3,7 @@ import * as admin from 'firebase-admin';
 import * as request from 'request';
 
 
+
 /** Navesock Objects */
 import {MatchDetailImport} from './matchdetail-import';
 import {SendResults} from './send-email'
@@ -101,3 +102,40 @@ individualemails.forEach(indvEmail => {
 res.send('Done');
 });
 */
+
+
+/**
+ * Resize Images upliaded to the Firebase Storage
+ */
+import * as gcs from '@google-cloud/storage';
+import * as path from 'path';
+import * as os from 'os';
+import * as cpp from 'child-process-promise';
+
+
+export const onFileChange= functions.storage.object().onFinalize(event => {
+    const gcsObject = gcs();
+    const spawn = cpp.spawn;
+    const bucket = event.bucket;
+    const contentType = event.contentType;
+    const filePath = event.name;
+    console.log('File uploaded: ' + filePath);
+
+    if (path.basename(filePath).startsWith('thumb-')) {
+        return  null;
+    }
+
+    const destBucket = gcsObject.bucket(bucket);
+    const tmpFilePath = path.join(os.tmpdir(), path.basename(filePath));
+    const metadata = { contentType: contentType };
+    return destBucket.file(filePath).download({
+        destination: tmpFilePath
+    }).then(() => {
+        return spawn('convert', [tmpFilePath, '-thumbnail', '200x200', tmpFilePath]);
+    }).then(() => {
+        return destBucket.upload(tmpFilePath, {
+            destination:  path.dirname(filePath) + '/thumb-' + path.basename(filePath),
+            metadata: metadata
+        })
+    });
+});
